@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 MovingBlocks
+ * Copyright 2017 MovingBlocks
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,21 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.terasology.logic.characters;
+package org.terasology.logic.players;
 
-import org.terasology.entitySystem.Component;
-import org.terasology.entitySystem.entity.EntityRef;
-import org.terasology.network.BroadcastEvent;
-import org.terasology.network.Replicate;
+import org.terasology.math.geom.Vector3f;
+import org.terasology.rendering.logic.VisualComponent;
 
-public class CharacterHeldItemComponent implements Component {
-
-    @Replicate
-    public EntityRef selectedItem = EntityRef.NULL;
-
-    @Replicate
-    public long lastItemUsedTime;
-
-    @Replicate
-    public long nextItemUseTime;
+public class ThirdPersonHeldItemTransformComponent implements VisualComponent {
+    public Vector3f rotateDegrees = Vector3f.zero();
+    public Vector3f translate = Vector3f.zero();
+    public float scale = 1f;
 }

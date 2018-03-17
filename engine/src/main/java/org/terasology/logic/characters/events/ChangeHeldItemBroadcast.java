@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 MovingBlocks
+ * Copyright 2017 MovingBlocks
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,21 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.terasology.logic.characters;
+package org.terasology.logic.characters.events;
 
-import org.terasology.entitySystem.Component;
 import org.terasology.entitySystem.entity.EntityRef;
 import org.terasology.network.BroadcastEvent;
-import org.terasology.network.Replicate;
 
-public class CharacterHeldItemComponent implements Component {
+@BroadcastEvent
+public class ChangeHeldItemBroadcast {
 
-    @Replicate
-    public EntityRef selectedItem = EntityRef.NULL;
+    private EntityRef item;
 
-    @Replicate
-    public long lastItemUsedTime;
+    protected ChangeHeldItemBroadcast() {
+    }
 
-    @Replicate
-    public long nextItemUseTime;
+    public ChangeHeldItemBroadcast(EntityRef item) {
+        this.item = item;
+    }
+
+    public EntityRef getItem() {
+        return item;
+    }
 }
