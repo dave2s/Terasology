@@ -20,6 +20,7 @@ import org.terasology.entitySystem.entity.EntityRef;
 import org.terasology.network.BroadcastEvent;
 import org.terasology.network.Replicate;
 
+@Replicate
 public class CharacterHeldItemComponent implements Component {
 
     @Replicate
