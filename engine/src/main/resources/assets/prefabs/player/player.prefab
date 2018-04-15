@@ -69,6 +69,8 @@
   },
   "CharacterHeldItem": {
   },
+  "RemotePersonHeldItemMountPoint": {
+  },
   "Breather": {},
   "GazeMountPoint": {
     "translate": [

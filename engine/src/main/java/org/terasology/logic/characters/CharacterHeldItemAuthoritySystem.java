@@ -21,14 +21,37 @@ import org.terasology.entitySystem.systems.BaseComponentSystem;
 import org.terasology.entitySystem.systems.RegisterMode;
 import org.terasology.entitySystem.systems.RegisterSystem;
 import org.terasology.logic.characters.events.ChangeHeldItemRequest;
+/*import org.terasology.network.FieldReplicateType;
+import org.terasology.network.Replicate;
+
+import java.util.HashMap;
+import java.util.Map;*/
 
 @RegisterSystem(RegisterMode.AUTHORITY)
 public class CharacterHeldItemAuthoritySystem extends BaseComponentSystem {
 
+    /*@Replicate(FieldReplicateType.SERVER_TO_CLIENT)
+    public Map<EntityRef,CharacterHeldItemComponent> charactersHeldItems = new HashMap<>();
+*/
     @ReceiveEvent
     public void onChangeHeldItemRequest(ChangeHeldItemRequest event, EntityRef character,
                                         CharacterHeldItemComponent characterHeldItemComponent) {
         characterHeldItemComponent.selectedItem = event.getItem();
+        //updateCharactersHeldItems(character, characterHeldItemComponent);
         character.saveComponent(characterHeldItemComponent);
     }
+
+   /* private void updateCharactersHeldItems(EntityRef character, CharacterHeldItemComponent characterHeldItemComponent){
+        if (!charactersHeldItems.containsKey(character)){
+            charactersHeldItems.put(character,characterHeldItemComponent);
+        }
+        else{
+            charactersHeldItems.putIfAbsent(character,characterHeldItemComponent);
+        }
+    }*/
+
+   /* @Override
+    public void preSave() {
+        charactersHeldItems.clear();
+    }*/
 }
