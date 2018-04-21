@@ -240,6 +240,9 @@ public class ThirdPersonRemoteClientSystem extends BaseComponentSystem implement
         updateRemoteCharacters();
 
         for (EntityRef remotePlayer: charactersHeldItems.keySet()) {
+            if(remotePlayer.equals(localPlayer.getCharacterEntity())){
+                continue;
+            }
             EntityRef currentHeldItem = charactersHeldItems.get(remotePlayer);
             // ensure empty hand is shown if no item is held at the moment
             if (!currentHeldItem.exists() && currentHeldItem != getHandEntity(remotePlayer)) {
@@ -254,6 +257,9 @@ public class ThirdPersonRemoteClientSystem extends BaseComponentSystem implement
                 }
             }*/
         for (EntityRef remotePlayer: charactersHeldItems.keySet()) {
+            if(remotePlayer.equals(localPlayer.getCharacterEntity())){
+                continue;
+            }
             //EntityRef currentHeldItem = charactersHeldItems.get(remotePlayer);
 
             // get the first person mount point and rotate it away from the camera
