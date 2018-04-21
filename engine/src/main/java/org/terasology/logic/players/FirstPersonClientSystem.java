@@ -166,7 +166,7 @@ public class FirstPersonClientSystem extends BaseComponentSystem implements Upda
 
                 // add the visually relevant components
                 for (Component component : newHeldItem.iterateComponents()) {
-                    if (component instanceof VisualComponent) {
+                    if (component instanceof VisualComponent && !(component instanceof RemotePersonHeldItemTransformComponent)) {
                         currentHeldItem.addComponent(component);
                     }
                 }

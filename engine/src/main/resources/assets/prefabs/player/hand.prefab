@@ -10,8 +10,8 @@
         "scale": 0.8
     },
     "ThirdPersonHeldItemTransform": {
-        "rotateDegrees": [25, 0, 0],
-        "translate": [-0.25, 0, 0.75],
-        "scale": 0.5
-        }
+        "rotateDegrees": [25, -175, 0],
+        "translate": [0.5, 1, 0.75],
+        "scale": 0.8
+    }
 }
