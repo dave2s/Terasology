@@ -60,12 +60,11 @@ public class ThirdPersonRemoteClientSystem extends BaseComponentSystem implement
     @In
     private Time time;
 
+    // the item from the inventory synchronized with the server
     private Map<EntityRef,EntityRef> charactersHandEntities = new HashMap<>();
 
     private Map<EntityRef,EntityRef> charactersHeldItems = new HashMap<>();
 
-    // the item from the inventory synchronized with the server
-    //private EntityRef currentHeldItem = EntityRef.NULL;
 
     private EntityRef getHandEntity(EntityRef character) {
         EntityRef handEntity = charactersHandEntities.get(character);
@@ -175,8 +174,7 @@ public class ThirdPersonRemoteClientSystem extends BaseComponentSystem implement
             charactersHeldItems.put(character,EntityRef.NULL);
         }
         EntityRef currentHeldItem = charactersHeldItems.get(character);
-        if (!newItem.equals(currentHeldItem/*!newItem.equals(item)*/)) {
-            //EntityRef camera = localPlayer.getCameraEntity();
+        if (!newItem.equals(currentHeldItem)) {
             RemotePersonHeldItemMountPointComponent mountPointComponent = character.getComponent(RemotePersonHeldItemMountPointComponent.class);
             if (mountPointComponent != null) {
 
@@ -199,7 +197,7 @@ public class ThirdPersonRemoteClientSystem extends BaseComponentSystem implement
 
                 // add the visually relevant components
                 for (Component component : newHeldItem.iterateComponents()) {
-                    if (component instanceof VisualComponent /*|| component instanceof DisplayNameComponent)*/&& !(component instanceof FirstPersonHeldItemTransformComponent)) {
+                    if (component instanceof VisualComponent && !(component instanceof FirstPersonHeldItemTransformComponent)) {
                         currentHeldItem.addComponent(component);
                     }
                 }
