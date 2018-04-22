@@ -286,6 +286,7 @@ public class ThirdPersonRemoteClientSystem extends BaseComponentSystem implement
             long timeElapsedSinceLastUsed = time.getGameTimeInMs() - characterHeldItemComponent.lastItemUsedTime;
             float animateAmount = 0f;
             if (timeElapsedSinceLastUsed < USEANIMATIONLENGTH) {
+                //TODO add easing functions into utilities and use here?
                 // half way through the animation will be the maximum extent of rotation and translation
                 animateAmount = 1f - Math.abs(((float) timeElapsedSinceLastUsed / (float) USEANIMATIONLENGTH) - 0.5f);
             }
@@ -295,7 +296,7 @@ public class ThirdPersonRemoteClientSystem extends BaseComponentSystem implement
                     TeraMath.DEG_TO_RAD * (mountPointComponent.rotateDegrees.y + addYaw),
                     TeraMath.DEG_TO_RAD * (mountPointComponent.rotateDegrees.x + addPitch),
                     TeraMath.DEG_TO_RAD * mountPointComponent.rotateDegrees.z));
-            Vector3f offset = new Vector3f(0.25f * animateAmount, -0.12f * animateAmount, 0f);
+            Vector3f offset = new Vector3f(0.05f * animateAmount, -0.24f * animateAmount, 0f);
             offset.add(mountPointComponent.translate);
             locationComponent.setLocalPosition(offset);
 
