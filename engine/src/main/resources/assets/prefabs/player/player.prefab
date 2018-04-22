@@ -70,9 +70,9 @@
   "CharacterHeldItem": {
   },
   "RemotePersonHeldItemMountPoint": {
-        "rotateDegrees": [0, 180, 0],
-        "translate": [-0.5, 0.5, 0.6],
-        "scale": 0.5
+        "rotateDegrees": [0, 0, 0],
+        "translate": [-0.4, 0.45, 0.3],
+        "scale": 0.35
   },
   "Breather": {},
   "GazeMountPoint": {

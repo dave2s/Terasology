@@ -136,6 +136,17 @@ public class ThirdPersonRemoteClientSystem extends BaseComponentSystem implement
         }
     }
 
+    @Command(shortDescription = "Sets the held item mount point scale for remote characters")
+    public void setRemotePlayersHeldItemMountPointScale(@CommandParam("scale") float scale) {
+        for (EntityRef remotePlayer: charactersHeldItems.keySet()) {
+            RemotePersonHeldItemMountPointComponent newComponent = remotePlayer.getComponent(RemotePersonHeldItemMountPointComponent.class);
+            if (newComponent != null) {
+                newComponent.scale = scale;
+                ensureClientSideEntityOnHeldItemMountPoint(OnActivatedComponent.newInstance(), remotePlayer, newComponent);
+            }
+        }
+    }
+
     @ReceiveEvent
     public void onHeldItemActivated(OnActivatedComponent event, EntityRef character, CharacterHeldItemComponent heldItemComponent, CharacterComponent characterComponents) {
         if (!localPlayer.getCharacterEntity().equals(character)) {
@@ -188,7 +199,7 @@ public class ThirdPersonRemoteClientSystem extends BaseComponentSystem implement
 
                 // add the visually relevant components
                 for (Component component : newHeldItem.iterateComponents()) {
-                    if ((component instanceof VisualComponent || component instanceof DisplayNameComponent)&& !(component instanceof FirstPersonHeldItemTransformComponent)) {
+                    if (component instanceof VisualComponent /*|| component instanceof DisplayNameComponent)*/&& !(component instanceof FirstPersonHeldItemTransformComponent)) {
                         currentHeldItem.addComponent(component);
                     }
                 }
