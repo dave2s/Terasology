@@ -15,6 +15,7 @@
  */
 package org.terasology.logic.players;
 
+import com.sun.xml.internal.stream.events.CharacterEvent;
 import org.terasology.engine.Time;
 import org.terasology.entitySystem.Component;
 import org.terasology.entitySystem.entity.EntityBuilder;
@@ -27,10 +28,8 @@ import org.terasology.entitySystem.systems.BaseComponentSystem;
 import org.terasology.entitySystem.systems.RegisterMode;
 import org.terasology.entitySystem.systems.RegisterSystem;
 import org.terasology.entitySystem.systems.UpdateSubscriberSystem;
-import org.terasology.logic.actions.PlaySoundActionComponent;
 import org.terasology.logic.characters.CharacterComponent;
 import org.terasology.logic.characters.CharacterHeldItemComponent;
-import org.terasology.logic.common.DisplayNameComponent;
 import org.terasology.logic.console.commandSystem.annotations.Command;
 import org.terasology.logic.console.commandSystem.annotations.CommandParam;
 import org.terasology.logic.location.Location;
@@ -39,13 +38,18 @@ import org.terasology.math.TeraMath;
 import org.terasology.math.geom.Quat4f;
 import org.terasology.math.geom.Vector3f;
 import org.terasology.network.ClientComponent;
+import org.terasology.network.events.DisconnectedEvent;
 import org.terasology.registry.In;
 import org.terasology.rendering.logic.VisualComponent;
-import org.terasology.rendering.world.WorldRenderer;
 
 import java.util.HashMap;
 import java.util.Map;
 
+/*
+ * This client system handles displaying held items for all remote players in multiplayer session.
+ * TODO known issue: after reconnecting, other players can appear to be holding no item until first action
+ * TODO (including mouse click actions)
+ */
 @RegisterSystem(RegisterMode.CLIENT)
 public class ThirdPersonRemoteClientSystem extends BaseComponentSystem implements UpdateSubscriberSystem {
 
@@ -53,8 +57,6 @@ public class ThirdPersonRemoteClientSystem extends BaseComponentSystem implement
 
     @In
     private LocalPlayer localPlayer;
-    @In
-    private WorldRenderer worldRenderer;
     @In
     private EntityManager entityManager;
     @In
@@ -104,7 +106,6 @@ public class ThirdPersonRemoteClientSystem extends BaseComponentSystem implement
 
     @ReceiveEvent
     public void ensureHeldItemIsMountedOnLoad(OnChangedComponent event, EntityRef clientEntity, ClientComponent clientComponent) {
-        //if(entityRef instanceof )
         if ((!(localPlayer.getClientEntity().equals(clientEntity))) &&(clientEntity.exists()) && clientComponent.character!= EntityRef.NULL) {
             CharacterHeldItemComponent characterHeldItemComponent = clientComponent.character.getComponent(CharacterHeldItemComponent.class);
             if (characterHeldItemComponent != null && !(clientComponent.character.equals(localPlayer.getCharacterEntity()))) {
@@ -147,10 +148,10 @@ public class ThirdPersonRemoteClientSystem extends BaseComponentSystem implement
     }
 
     @ReceiveEvent
-    public void onHeldItemActivated(OnActivatedComponent event, EntityRef character, CharacterHeldItemComponent heldItemComponent, CharacterComponent characterComponents) {
-        if (!localPlayer.getCharacterEntity().equals(character)) {
+    public void onHeldItemActivated(OnActivatedComponent event, EntityRef player, CharacterHeldItemComponent heldItemComponent, CharacterComponent characterComponents) {
+        if (!localPlayer.getCharacterEntity().equals(player)) {
             EntityRef newItem = heldItemComponent.selectedItem;
-            linkHeldItemLocationForRemotePlayer(newItem,character);
+            linkHeldItemLocationForRemotePlayer(newItem,player);
         }
     }
 
@@ -162,20 +163,29 @@ public class ThirdPersonRemoteClientSystem extends BaseComponentSystem implement
         }
     }
 
+    @ReceiveEvent
+    public void onClientDisconnect(DisconnectedEvent event, EntityRef clientEntity, ClientComponent clientComponent) {
+        if(charactersHeldItems.containsKey(clientComponent.character) || charactersHandEntities.containsKey(clientComponent.character)){
+            charactersHeldItems.remove(clientComponent.character);
+            charactersHandEntities.remove(clientComponent.character);
+            destroyUnheldItems();
+        }
+    }
+
     /**
      * Changes held item entity.
      *
      * <p>Detaches old held item and removes it's components. Adds components to new held item and
      * attaches it to the mount point entity.</p>
      */
-    private void linkHeldItemLocationForRemotePlayer(EntityRef newItem,EntityRef character) {
+    private void linkHeldItemLocationForRemotePlayer(EntityRef newItem,EntityRef player) {
         //If this character is yet unknown to us, add it to the map
-        if(!charactersHeldItems.containsKey(character)){
-            charactersHeldItems.put(character,EntityRef.NULL);
+        if(!charactersHeldItems.containsKey(player)){
+            charactersHeldItems.put(player,EntityRef.NULL);
         }
-        EntityRef currentHeldItem = charactersHeldItems.get(character);
+        EntityRef currentHeldItem = charactersHeldItems.get(player);
         if (!newItem.equals(currentHeldItem)) {
-            RemotePersonHeldItemMountPointComponent mountPointComponent = character.getComponent(RemotePersonHeldItemMountPointComponent.class);
+            RemotePersonHeldItemMountPointComponent mountPointComponent = player.getComponent(RemotePersonHeldItemMountPointComponent.class);
             if (mountPointComponent != null) {
 
                 //currentHeldItem is at this point the old item
@@ -186,14 +196,14 @@ public class ThirdPersonRemoteClientSystem extends BaseComponentSystem implement
                 // use the hand if there is no new item
                 EntityRef newHeldItem;
                 if (newItem == EntityRef.NULL) {
-                    newHeldItem = getHandEntity(character);
+                    newHeldItem = getHandEntity(player);
                 } else {
                     newHeldItem = newItem;
                 }
 
                 // create client side held item entity for remote player and store it in local remote players map
                 currentHeldItem = entityManager.create();
-                charactersHeldItems.put(character,currentHeldItem);
+                charactersHeldItems.put(player,currentHeldItem);
 
                 // add the visually relevant components
                 for (Component component : newHeldItem.iterateComponents()) {
@@ -228,7 +238,7 @@ public class ThirdPersonRemoteClientSystem extends BaseComponentSystem implement
      */
     private void destroyUnheldItems(){
         for (EntityRef entityRef : entityManager.getEntitiesWith(ItemIsRemotelyHeldComponent.class)) {
-            if (!charactersHeldItems.containsValue(entityRef) && !(charactersHandEntities.containsValue(entityRef))) {
+            if ((!charactersHeldItems.containsValue(entityRef)) && !(charactersHandEntities.containsValue(entityRef))) {
                 entityRef.destroy();
             }
         }
@@ -237,15 +247,15 @@ public class ThirdPersonRemoteClientSystem extends BaseComponentSystem implement
      *TODO javadoc
      */
     private void updateRemoteCharacters(){
-        //Update held items
         for (EntityRef entityRef : entityManager.getEntitiesWith(CharacterComponent.class)) {
-            if ((!entityRef.equals(localPlayer)) && (!charactersHeldItems.containsKey(entityRef))) {
-                charactersHeldItems.put(entityRef,EntityRef.NULL);
-            }
-        }//Update hand entities
-        for (EntityRef entityRef : entityManager.getEntitiesWith(CharacterComponent.class)) {
-            if ((!entityRef.equals(localPlayer)) && (!charactersHandEntities.containsKey(entityRef))) {
-                charactersHandEntities.put(entityRef,EntityRef.NULL);
+            if(!entityRef.equals(localPlayer.getCharacterEntity())) {
+                //Update held items
+                if (!charactersHeldItems.containsKey(entityRef)) {
+                    charactersHeldItems.put(entityRef, EntityRef.NULL);
+                }//Update Hand Entities
+                if (!charactersHandEntities.containsKey(entityRef)) {
+                    charactersHandEntities.put(entityRef, EntityRef.NULL);
+                }
             }
         }
     }
@@ -260,9 +270,9 @@ public class ThirdPersonRemoteClientSystem extends BaseComponentSystem implement
         updateRemoteCharacters();
 
         for (EntityRef remotePlayer: charactersHeldItems.keySet()) {
-            if(remotePlayer.equals(localPlayer.getCharacterEntity())){//TODO is this really needed? characterHeldItems and characterHandEntities should not contain local player
-                continue;
-            }
+//            if(remotePlayer.equals(localPlayer.getCharacterEntity())){//TODO is this really needed? characterHeldItems and characterHandEntities should not contain local player
+//                continue;
+//            }
             //EntityRef currentHeldItem = charactersHeldItems.get(remotePlayer);
             // ensure empty hand is shown if no item is held at the moment
             if ((!charactersHeldItems.get(remotePlayer).exists()) && charactersHeldItems.get(remotePlayer) != getHandEntity(remotePlayer)) {
@@ -286,7 +296,7 @@ public class ThirdPersonRemoteClientSystem extends BaseComponentSystem implement
             long timeElapsedSinceLastUsed = time.getGameTimeInMs() - characterHeldItemComponent.lastItemUsedTime;
             float animateAmount = 0f;
             if (timeElapsedSinceLastUsed < USEANIMATIONLENGTH) {
-                //TODO add easing functions into utilities and use here?
+                //TODO add other easing functions into utilities and use here?
                 // half way through the animation will be the maximum extent of rotation and translation
                 animateAmount = 1f - Math.abs(((float) timeElapsedSinceLastUsed / (float) USEANIMATIONLENGTH) - 0.5f);
             }
@@ -308,9 +318,11 @@ public class ThirdPersonRemoteClientSystem extends BaseComponentSystem implement
 
     @Override
     public void preSave() {
-       /* if (currentHeldItem != EntityRef.NULL) {
-            currentHeldItem.destroy();
-        }*/
 
+    }
+
+    @Override
+    public void shutdown() {
+        destroyUnheldItems();
     }
 }
