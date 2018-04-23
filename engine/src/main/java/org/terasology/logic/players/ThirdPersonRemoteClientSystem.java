@@ -68,7 +68,7 @@ public class ThirdPersonRemoteClientSystem extends BaseComponentSystem implement
 
     private EntityRef getHandEntity(EntityRef character) {
         EntityRef handEntity = charactersHandEntities.get(character);
-        if ( handEntity == null) {
+        if ( handEntity == EntityRef.NULL) {
             // create the hand entity
             EntityBuilder entityBuilder = entityManager.newBuilder("engine:hand");
             entityBuilder.setPersistent(false);
@@ -260,7 +260,7 @@ public class ThirdPersonRemoteClientSystem extends BaseComponentSystem implement
         updateRemoteCharacters();
 
         for (EntityRef remotePlayer: charactersHeldItems.keySet()) {
-            if(remotePlayer.equals(localPlayer.getCharacterEntity())){
+            if(remotePlayer.equals(localPlayer.getCharacterEntity())){//TODO is this really needed? characterHeldItems and characterHandEntities should not contain local player
                 continue;
             }
             //EntityRef currentHeldItem = charactersHeldItems.get(remotePlayer);
