@@ -16,12 +16,15 @@
 
 package org.terasology.rendering;
 
+import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.terasology.logic.players.LocalPlayer;
 import org.terasology.math.AABB;
 import org.terasology.math.geom.Vector3f;
 import org.terasology.math.geom.Vector4f;
 import org.terasology.registry.CoreRegistry;
+
+import java.nio.FloatBuffer;
 
 import static org.lwjgl.opengl.GL11.GL_BLEND;
 import static org.lwjgl.opengl.GL11.GL_LINE_LOOP;
@@ -42,6 +45,8 @@ import static org.lwjgl.opengl.GL11.glPushMatrix;
 import static org.lwjgl.opengl.GL11.glScalef;
 import static org.lwjgl.opengl.GL11.glTranslated;
 import static org.lwjgl.opengl.GL11.glVertex3f;
+import static org.lwjgl.opengl.GL11.glGetFloat;
+import static org.lwjgl.opengl.GL12.GL_ALIASED_LINE_WIDTH_RANGE;
 
 /**
  * Renderer for an AABB.
@@ -122,7 +127,17 @@ public class AABBRenderer implements BlockOverlayRenderer {
         glPushMatrix();
         glTranslated(0f, aabb.getCenter().y, 0f);
 
-        glLineWidth(lineThickness);
+        //Query for supported glLineWidth
+        final FloatBuffer lineWidthRange = BufferUtils.createFloatBuffer(16);
+        glGetFloat(GL_ALIASED_LINE_WIDTH_RANGE, lineWidthRange);
+
+        //Clamp lineThickness to supported range
+        if (lineWidthRange.get(1) >= lineThickness) {
+            glLineWidth(lineThickness);
+        } else {
+            glLineWidth(lineWidthRange.get(1));
+        }
+
         glCallList(displayListWire);
 
         glPopMatrix();

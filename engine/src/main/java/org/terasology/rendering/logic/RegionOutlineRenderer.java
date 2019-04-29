@@ -49,6 +49,8 @@ import static org.lwjgl.opengl.GL11.glEnable;
 import static org.lwjgl.opengl.GL11.glEnd;
 import static org.lwjgl.opengl.GL11.glLineWidth;
 import static org.lwjgl.opengl.GL11.glVertex3f;
+import static org.lwjgl.opengl.GL11.glGetFloat;
+import static org.lwjgl.opengl.GL12.GL_ALIASED_LINE_WIDTH_RANGE;
 
 /**
  * Renderes region outlines for all entities with  {@link RegionOutlineComponent}s.
@@ -96,7 +98,18 @@ public class RegionOutlineRenderer extends BaseComponentSystem implements Render
             return; // skip everything if there is nothing to do to avoid possibly costly draw mode changes
         }
         glDisable(GL_DEPTH_TEST);
-        glLineWidth(2);
+
+        //Query for supported glLineWidth
+        final FloatBuffer lineWidthRange = BufferUtils.createFloatBuffer(16);
+        glGetFloat(GL_ALIASED_LINE_WIDTH_RANGE, lineWidthRange);
+
+        //Clamp lineThickness to supported range
+        if (lineWidthRange.get(1) >= 2.f) {
+            glLineWidth(2);
+        } else {
+            glLineWidth(1);
+        }
+
         Vector3f cameraPosition = worldRenderer.getActiveCamera().getPosition();
 
         FloatBuffer tempMatrixBuffer44 = BufferUtils.createFloatBuffer(16);
