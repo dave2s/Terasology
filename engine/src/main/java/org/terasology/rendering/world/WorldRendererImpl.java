@@ -16,9 +16,14 @@
 package org.terasology.rendering.world;
 
 import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.terasology.config.Config;
 import org.terasology.config.RenderingConfig;
 import org.terasology.context.Context;
+import org.terasology.engine.module.ModuleManager;
+import org.terasology.engine.module.rendering.RenderingModuleManager;
 import org.terasology.engine.subsystem.DisplayDevice;
 import org.terasology.engine.subsystem.lwjgl.GLBufferPool;
 import org.terasology.engine.subsystem.lwjgl.LwjglGraphics;
@@ -38,7 +43,8 @@ import org.terasology.rendering.backdrop.BackdropProvider;
 import org.terasology.rendering.cameras.OpenVRStereoCamera;
 import org.terasology.rendering.cameras.PerspectiveCamera;
 import org.terasology.rendering.cameras.SubmersibleCamera;
-import org.terasology.rendering.dag.gsoc.DummyNode;
+import org.terasology.engine.module.rendering.RenderingModuleRegistry;
+import org.terasology.rendering.dag.gsoc.ModuleRendering;
 import org.terasology.rendering.dag.gsoc.NewNode;
 import org.terasology.rendering.dag.RenderGraph;
 import org.terasology.rendering.dag.RenderPipelineTask;
@@ -77,8 +83,10 @@ public final class WorldRendererImpl implements WorldRenderer {
      * Presumably, the eye height should be context.get(Config.class).getPlayer().getEyeHeight() above the ground plane.
      * It's not, so for now, we use this factor to adjust for the disparity.
      */
+    private static final Logger logger = LoggerFactory.getLogger(WorldRendererImpl.class);
     private static final float GROUND_PLANE_HEIGHT_DISPARITY = -0.7f;
     private RenderGraph renderGraph;
+    private RenderingModuleRegistry renderingModuleRegistry;
 
     private boolean isFirstRenderingStageForCurrentFrame;
     private final RenderQueuesHelper renderQueues;
@@ -168,6 +176,10 @@ public final class WorldRendererImpl implements WorldRenderer {
 
         initRenderingSupport();
 
+        initRenderGraph();
+
+        initRenderingModules();
+
         console = context.get(Console.class);
         MethodCommand.registerAvailable(this, console, context);
     }
@@ -184,7 +196,6 @@ public final class WorldRendererImpl implements WorldRenderer {
         context.put(WorldRenderer.class, this);
         context.put(RenderQueuesHelper.class, renderQueues);
         context.put(RenderableWorld.class, renderableWorld);
-        initRenderGraph();
     }
 
     private void initRenderGraph() {
@@ -194,6 +205,27 @@ public final class WorldRendererImpl implements WorldRenderer {
         context.put(RenderTaskListGenerator.class, renderTaskListGenerator);
 
         addDummyNodes();
+    }
+
+    private void initRenderingModules() {
+        renderingModuleRegistry = context.get(RenderingModuleManager.class).getRegistry();
+
+        // registry not populated by new ModuleRendering instances in UI, populate now
+        if (renderingModuleRegistry.getOrderedRenderingModules().isEmpty()) {
+            renderingModuleRegistry.updateRenderingModulesOrder(context.get(ModuleManager.class).getEnvironment(), context);
+        } else { // registry populated by new ModuleRendering instances in UI
+            // Switch module's context from gamecreation subcontext to gamerunning context
+            renderingModuleRegistry.updateModulesContext(context);
+        }
+
+        for (ModuleRendering moduleRenderingInstance : renderingModuleRegistry.getOrderedRenderingModules()) {
+            if (moduleRenderingInstance.isEnabled()) {
+                logger.info(String.format("\nInitialising rendering class %s from %s module.\n",
+                                            moduleRenderingInstance.getClass().getSimpleName(),
+                                            moduleRenderingInstance.getProvidingModule()));
+                moduleRenderingInstance.initialise();
+            }
+        }
 
         requestTaskListRefresh();
     }
@@ -454,7 +486,7 @@ public final class WorldRendererImpl implements WorldRenderer {
      * concerned Nodes, which in turn take care of executing them.
      *
      * Usage:
-     *      dagCommandNode <nodeUri> <command> <parameters>
+     *      dagNodeCommand <nodeUri> <command> <parameters>
      *
      * Example:
      *      dagNodeCommand engine:outputToScreenNode setFbo engine:fbo.ssao
@@ -464,8 +496,54 @@ public final class WorldRendererImpl implements WorldRenderer {
                                @CommandParam(value = "arguments") final String... arguments) {
         NewNode node = renderGraph.findNode(nodeUri);
         if (node == null) {
-            throw new RuntimeException(("No node is associated with URI '" + nodeUri + "'"));
+            node = renderGraph.findAka(nodeUri);
+            if (node == null) {
+                throw new RuntimeException(("No node is associated with URI '" + nodeUri + "'"));
+            }
         }
         node.handleCommand(command, arguments);
+    }
+
+    /**
+     * Redirect output FBO from one node to another's input
+     *
+     * Usage:
+     *      dagRedirect <connectionTypeString> <fromNodeUri> <outputFboId> <toNodeUri> <inputFboId>
+     *
+     * Example:
+     *      dagRedirect fbo blurredAmbientOcclusion 1 BasicRendering:outputToScreenNode 1
+     *      dagRedirect bufferpair backdrop 1 AdvancedRendering:intermediateHazeNode 1
+     */
+    @Command(shortDescription = "Debugging command for DAG.", requiredPermission = PermissionManager.NO_PERMISSION)
+    public void dagRedirect(@CommandParam("fromNodeUri") final String connectionTypeString, @CommandParam("fromNodeUri") final String fromNodeUri, @CommandParam("outputFboId") final int outputFboId,
+                            @CommandParam("toNodeUri") final String toNodeUri, @CommandParam(value = "inputFboId") final int inputFboId) {
+        RenderGraph.ConnectionType connectionType;
+        if(connectionTypeString.equalsIgnoreCase("fbo")) {
+            connectionType = RenderGraph.ConnectionType.FBO;
+        } else if (connectionTypeString.equalsIgnoreCase("bufferpair")) {
+            connectionType = RenderGraph.ConnectionType.BUFFER_PAIR;
+        } else {
+            throw new RuntimeException(("Unsupported connection type: '" + connectionTypeString + "'. Expected 'fbo' or 'bufferpair'.\n"));
+        }
+
+        NewNode toNode = renderGraph.findNode(toNodeUri);
+        if (toNode == null) {
+            toNode = renderGraph.findAka(toNodeUri);
+            if (toNode == null) {
+                throw new RuntimeException(("No node is associated with URI '" + toNodeUri + "'"));
+            }
+        }
+
+        NewNode fromNode = renderGraph.findNode(fromNodeUri);
+        if (fromNode == null) {
+            fromNode = renderGraph.findAka(fromNodeUri);
+            if (fromNode == null) {
+                throw new RuntimeException(("No node is associated with URI '" + fromNodeUri + "'"));
+            }
+        }
+    renderGraph.reconnectInputToOutput(fromNode, outputFboId, toNode, inputFboId, connectionType, true);
+    toNode.clearDesiredStateChanges();
+    requestTaskListRefresh();
+
     }
 }

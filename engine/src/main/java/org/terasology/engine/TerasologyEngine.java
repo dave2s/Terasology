@@ -41,10 +41,11 @@ import org.terasology.engine.subsystem.common.GameSubsystem;
 import org.terasology.engine.subsystem.common.MonitoringSubsystem;
 import org.terasology.engine.subsystem.common.NetworkSubsystem;
 import org.terasology.engine.subsystem.common.PhysicsSubsystem;
+import org.terasology.engine.subsystem.common.TelemetrySubSystem;
 import org.terasology.engine.subsystem.common.ThreadManagerSubsystem;
 import org.terasology.engine.subsystem.common.TimeSubsystem;
 import org.terasology.engine.subsystem.common.WorldGenerationSubsystem;
-import org.terasology.engine.subsystem.common.TelemetrySubSystem;
+import org.terasology.engine.subsystem.rendering.ModuleRenderingSubsystem;
 import org.terasology.entitySystem.prefab.Prefab;
 import org.terasology.entitySystem.prefab.PrefabData;
 import org.terasology.entitySystem.prefab.internal.PojoPrefab;
@@ -55,11 +56,12 @@ import org.terasology.logic.behavior.asset.BehaviorTreeData;
 import org.terasology.monitoring.Activity;
 import org.terasology.monitoring.PerformanceMonitor;
 import org.terasology.network.NetworkSystem;
-import org.terasology.persistence.typeHandling.TypeSerializationLibrary;
+import org.terasology.persistence.typeHandling.TypeHandlerLibrary;
 import org.terasology.recording.CharacterStateEventPositionMap;
 import org.terasology.recording.DirectionAndOriginPosRecorderList;
 import org.terasology.recording.RecordAndReplayCurrentStatus;
 import org.terasology.recording.RecordAndReplayUtils;
+import org.terasology.reflection.TypeRegistry;
 import org.terasology.reflection.copy.CopyStrategyLibrary;
 import org.terasology.reflection.reflect.ReflectFactory;
 import org.terasology.reflection.reflect.ReflectionReflectFactory;
@@ -185,6 +187,7 @@ public class TerasologyEngine implements GameEngine {
         this.allSubsystems.add(new GameSubsystem());
         this.allSubsystems.add(new I18nSubsystem());
         this.allSubsystems.add(new TelemetrySubSystem());
+        this.allSubsystems.add(new ModuleRenderingSubsystem());
     }
 
     /**
@@ -306,6 +309,9 @@ public class TerasologyEngine implements GameEngine {
     private void initManagers() {
 
         changeStatus(TerasologyEngineStatus.INITIALIZING_MODULE_MANAGER);
+        TypeRegistry typeRegistry = new TypeRegistry();
+        rootContext.put(TypeRegistry.class, typeRegistry);
+
         ModuleManager moduleManager = new ModuleManagerImpl(rootContext.get(Config.class), classesOnClasspathsToAddToEngine);
         rootContext.put(ModuleManager.class, moduleManager);
 
@@ -315,8 +321,8 @@ public class TerasologyEngine implements GameEngine {
 
         CopyStrategyLibrary copyStrategyLibrary = new CopyStrategyLibrary(reflectFactory);
         rootContext.put(CopyStrategyLibrary.class, copyStrategyLibrary);
-        rootContext.put(TypeSerializationLibrary.class, new TypeSerializationLibrary(reflectFactory,
-                copyStrategyLibrary));
+
+        rootContext.put(TypeHandlerLibrary.class, TypeHandlerLibrary.forModuleEnvironment(moduleManager, typeRegistry));
 
         changeStatus(TerasologyEngineStatus.INITIALIZING_ASSET_TYPES);
         assetTypeManager = new ModuleAwareAssetTypeManager();

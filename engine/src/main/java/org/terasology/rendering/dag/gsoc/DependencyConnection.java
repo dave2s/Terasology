@@ -23,6 +23,8 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public abstract class DependencyConnection<T> {
 
@@ -97,24 +99,27 @@ public abstract class DependencyConnection<T> {
     }
 
     /**
-     * Removes current link for both ends of the connection, set's connected node to connectToConnection and gets its data
-     * @param connectToConnection
+     * Removes current link for both ends of the connection, sets connected node to connectToConnection and gets its data
+     * @param fromConnection
      */
-    public void connectInputToOutput(DependencyConnection<T> connectToConnection) {
+    public void connectInputToOutput(DependencyConnection<T> fromConnection) {
         /*if (this.connectedConnection != null) {
             this.connectedConnection.connectedConnection = null;
         }*/
-        this.connectedConnections.putIfAbsent(connectToConnection.getName(), connectToConnection);
-        this.connectedConnections.get(connectToConnection.getName()).getConnectedConnections().putIfAbsent(this.getName(), this);
-        this.data = connectToConnection.getData();
+        if(this.connectionType == Type.INPUT) {
+            connectedConnections.clear();
+        }
+        this.connectedConnections.putIfAbsent(fromConnection.getName(), fromConnection);
+        this.connectedConnections.get(fromConnection.getName()).getConnectedConnections().putIfAbsent(this.getName(), this);
+        this.data = fromConnection.getData();
     }
 
     /**
      * Remove connections
      */
     public void disconnect() {
-        this.connectedConnections.forEach((k,v)->v.connectedConnections.remove(this));
-        this.connectedConnections = null;
+        this.connectedConnections.forEach((k, v)->v.connectedConnections.remove(this.getName()));
+        this.connectedConnections.clear();
         if (this.connectionType == Type.INPUT) {
             this.data = null;
         }
@@ -125,12 +130,35 @@ public abstract class DependencyConnection<T> {
     @Override
     public String toString() {
         StringBuilder connectedConnectionString = new StringBuilder("");
-        connectedConnections.forEach((k,v)->connectedConnectionString.append(k).append(", "));
-        connectedConnectionString.append(";");
+        if (connectedConnections != null) {
+            connectedConnections.forEach((k, v) -> connectedConnectionString.append(k).append(", "));
+            connectedConnectionString.append(";");
+        }
 
         return (connectionType == Type.OUTPUT)
                 ? String.format("Output:%s(connected to %s)", connectionName, connectedConnectionString.toString())
                 : String.format("Input:%s(connected to %s)", connectionName, connectedConnectionString.toString());
+    }
+
+    // TODO - would take a lot of time to add this atm
+//    public getId() {
+//        return this.id;
+//    }
+
+    public static int getIdFromConnectionName(String connectionName) {
+        int id;
+        final Pattern lastIntPattern = Pattern.compile("[^0-9]+([0-9]+)$");
+
+        String input = connectionName;
+        Matcher matcher = lastIntPattern.matcher(input);
+
+        if (matcher.find()) {
+            String digits = matcher.group(1);
+            id = Integer.parseInt(digits);
+        } else {
+            throw new RuntimeException("Could not parse ID from connection name");
+        }
+        return id;
     }
 
     /*

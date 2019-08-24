@@ -22,37 +22,81 @@ import org.terasology.engine.SimpleUri;
 import org.terasology.engine.module.ModuleManager;
 import org.terasology.entitySystem.systems.BaseComponentSystem;
 import org.terasology.entitySystem.systems.RegisterSystem;
+import org.terasology.module.Module;
 import org.terasology.naming.Name;
 import org.terasology.registry.In;
 import org.terasology.rendering.dag.RenderGraph;
+import org.terasology.rendering.nui.properties.Range;
 import org.terasology.rendering.opengl.FBO;
 import org.terasology.rendering.opengl.FboConfig;
 import org.terasology.rendering.opengl.ScalingFactors;
 import org.terasology.rendering.world.WorldRenderer;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.stream.Collectors;
+
 @RegisterSystem
-public abstract class ModuleRendering extends BaseComponentSystem {
+public abstract class ModuleRendering {
     protected static final Logger logger = LoggerFactory.getLogger(ModuleRendering.class);
 
-    @In
+    // private static List<Class> renderingModules = new ArrayList<>();
+
+    // @In
     protected Context context;
+    protected ModuleManager moduleManager;
     protected Name providingModule;
     protected RenderGraph renderGraph;
     protected WorldRenderer worldRenderer;
+    protected Boolean isEnabled = true;
 
-    // @Override
-    public void initialise(Class clazz) {
-        super.initialise();
-        setProvidingModule(clazz);
+    // Lower number, higher priority. 1 goes first
+    @Range(min = 1, max = 100)
+    protected int initializationPriority = 2;
+
+    public ModuleRendering(Context context) {
+        this.context = context;
+        moduleManager = context.get(ModuleManager.class);
+        providingModule = moduleManager.getEnvironment().getModuleProviding(this.getClass());
+    }
+
+    public boolean isEnabled() {
+        return isEnabled;
+    }
+
+    public void setContext(Context newContext) {
+        this.context = newContext;
+    }
+
+    public void setProvidingModule(Name providingModule) {
+        this.providingModule = providingModule;
+    }
+
+    public void setInitializationPriority(int initPriority) {
+        initializationPriority = initPriority;
+    }
+
+    public void toggleEnabled() {
+        isEnabled = !isEnabled;
+    }
+
+    public void initialise() {
         renderGraph = context.get(RenderGraph.class);
         worldRenderer = context.get(WorldRenderer.class);
     }
 
-    @Override
-    public void preBegin() {
-        worldRenderer.requestTaskListRefresh();
+    public Name getProvidingModule() {
+        return this.providingModule;
     }
 
+    public int getInitPriority() {
+        return initializationPriority;
+    }
+
+    public void setInitPriority(int initPriority) {
+        initializationPriority = initPriority;
+    }
 
     protected void setProvidingModule(Class implementingClass) {
         ModuleManager moduleManager = context.get(ModuleManager.class);

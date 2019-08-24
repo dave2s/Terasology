@@ -24,6 +24,7 @@ import org.terasology.context.Context;
 import org.terasology.engine.SimpleUri;
 import org.terasology.naming.Name;
 import org.terasology.rendering.dag.gsoc.BufferPairConnection;
+import org.terasology.rendering.dag.gsoc.BufferPair;
 import org.terasology.rendering.dag.gsoc.DependencyConnection;
 import org.terasology.rendering.dag.gsoc.FboConnection;
 import org.terasology.rendering.dag.gsoc.NewNode;
@@ -180,6 +181,10 @@ public class RenderTaskListGeneratorTest {
 
         }
 
+        public void clearDesiredStateChanges() {
+
+        }
+
         public void setRenderGraph(RenderGraph renderGraph) {
 
         }
@@ -245,11 +250,23 @@ public class RenderTaskListGeneratorTest {
 
         }
 
+        public void postInit(Context context) {
+            setDependencies(context);
+        }
+
         public boolean addOutputFboConnection(int id) {
             return false;
         }
 
         public boolean addOutputBufferPairConnection(int id) {
+            return false;
+        }
+
+        public boolean addOutputBufferPairConnection(int id, BufferPairConnection bufferPairConnection) {
+            return false;
+        }
+
+        public boolean addOutputBufferPairConnection(int id, BufferPair bufferPair) {
             return false;
         }
 
